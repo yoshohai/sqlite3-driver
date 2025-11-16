@@ -1,0 +1,10 @@
+- build with flags
+- investigate crash on: select * from table limit random();
+- implement limits
+- clear binding
+- changes
+- total changes
+- last insert id
+- column value null
+- readme
+- license

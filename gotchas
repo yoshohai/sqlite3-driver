@@ -1,0 +1,3 @@
+- set busy timeout before setting wal mode
+- set auto_vacuum before tables are created
+- SQLITE_ENABLE_MEMORY_MANAGEMENT increase execution time
