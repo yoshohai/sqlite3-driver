@@ -23,7 +23,7 @@ func Open(cfg Config) (*Connection, error) {
 	var err error
 
 	c := &Connection{backend: cfg.Backend}
-	cfg.Flags = cfg.Flags | cfg.Backend.OpenURI()
+	cfg.Flags = cfg.Flags | cfg.Backend.OpenURI() | cfg.Backend.OpenExtendedResultCode()
 	cUri := cfg.Backend.CharPtr(cfg.Backend.StringData(cfg.URI + "\x00"))
 	var db unsafe.Pointer
 	if rc := cfg.Backend.OpenV2(cUri, unsafe.Pointer(&db), cfg.Flags, nil); rc != cfg.Backend.ResultOk() {
