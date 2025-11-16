@@ -2,30 +2,53 @@ package driver
 
 import (
 	"fmt"
+	"net/url"
 	"unsafe"
 )
+
+type Config struct {
+	URI     string
+	Pragmas string
+	Flags   int
+	Backend SQLiteBackend
+}
 
 type Connection struct {
 	db unsafe.Pointer
 
 	backend SQLiteBackend
-	uri     string
 }
 
-func Open(uri string, backend SQLiteBackend) (*Connection, error) {
-	c := &Connection{
-		uri:     uri,
-		backend: backend,
-	}
-	flags := c.backend.OpenReadWrite() | c.backend.OpenCreate() | c.backend.OpenNoMutex() | c.backend.OpenURI()
-	cUri := c.backend.CharPtr(c.backend.StringData(c.uri + "\x00"))
+func Open(cfg Config) (*Connection, error) {
+	var err error
+
+	c := &Connection{backend: cfg.Backend}
+	cfg.Flags = cfg.Flags | cfg.Backend.OpenURI()
+	cUri := cfg.Backend.CharPtr(cfg.Backend.StringData(cfg.URI + "\x00"))
 	var db unsafe.Pointer
-	if rc := c.backend.OpenV2(cUri, unsafe.Pointer(&db), flags, nil); rc != c.backend.ResultOk() {
-		c.backend.CloseV2(db)
+	if rc := cfg.Backend.OpenV2(cUri, unsafe.Pointer(&db), cfg.Flags, nil); rc != cfg.Backend.ResultOk() {
+		cfg.Backend.CloseV2(db)
 		return nil, c.resultCodeToError(rc)
 	}
 	c.db = db
-	c.backend.ExtendedResultCodes(db, 1)
+
+	var pragmas url.Values
+	if pragmas, err = url.ParseQuery("?" + cfg.Pragmas); err != nil {
+		return nil, err
+	}
+	if !pragmas.Has("busy_timeout") {
+		pragmas.Add("busy_timeout", "1000")
+	}
+	if err = c.Exec(fmt.Sprintf("PRAGMA busy_timeout=%s", pragmas.Get("busy_timeout"))); err != nil { // running first to avoid busy recovery error in case of wal mode
+		return nil, err
+	}
+	pragmas.Del("busy_timeout")
+	for key := range pragmas {
+		if err = c.Exec(fmt.Sprintf("PRAGMA %s=%s", key, pragmas.Get(key))); err != nil {
+			return nil, err
+		}
+	}
+
 	return c, nil
 }
 
