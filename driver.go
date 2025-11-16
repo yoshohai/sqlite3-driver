@@ -33,7 +33,7 @@ func Open(cfg Config) (*Connection, error) {
 	c.db = db
 
 	var pragmas url.Values
-	if pragmas, err = url.ParseQuery("?" + cfg.Pragmas); err != nil {
+	if pragmas, err = url.ParseQuery(cfg.Pragmas); err != nil {
 		return nil, err
 	}
 	if !pragmas.Has("busy_timeout") {
